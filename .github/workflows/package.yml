@@ -1,0 +1,41 @@
+name: Package Windows download
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ShutdownChecklist.ps1"
+      - "checklist.json"
+      - "README-ja.txt"
+      - "Start.cmd"
+      - ".github/workflows/package.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ZIP
+        shell: powershell
+        run: |
+          $packageDir = Join-Path $env:RUNNER_TEMP "ShutdownChecklist"
+          New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+          Copy-Item ShutdownChecklist.ps1, checklist.json, README-ja.txt, Start.cmd -Destination $packageDir
+          Compress-Archive -LiteralPath $packageDir -DestinationPath ShutdownChecklist-Windows.zip -Force
+
+      - name: Commit ZIP
+        shell: powershell
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ShutdownChecklist-Windows.zip
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m "Build Windows download package"
+            git push
+          }
